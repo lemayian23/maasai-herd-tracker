@@ -138,8 +138,29 @@
     <!-- Panel: Herd -->
     <section class="panel active" id="panel-herd" role="tabpanel">
       <div class="card">
-        <div class="card-header"><h2><i class="fas fa-paw" style="color:var(--color-primary);"></i> Your Herd</h2><span class="badge" id="herdCount">0</span></div>
+        <div class="card-header">
+          <h2><i class="fas fa-paw" style="color:var(--color-primary);"></i> Your Herd</h2>
+          <span class="badge" id="herdCount">0</span>
+        </div>
+
+        <!-- Search Bar -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <input type="text" id="searchInput" placeholder="Search by name..." style="flex: 1; min-width: 150px; padding: 0.6rem 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 1rem;" />
+          <button id="searchBtn" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+          <button id="clearSearchBtn" class="btn" style="background: var(--color-border);"><i class="fas fa-times"></i> Clear</button>
+        </div>
+
+        <!-- Animal List -->
         <div id="herdList"><div class="empty-state"><i class="fas fa-cow"></i><p>No animals yet. Add your first one!</p></div></div>
+
+        <!-- Pagination Controls -->
+        <div id="paginationControls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <button id="prevPageBtn" class="btn" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+            <button id="nextPageBtn" class="btn">Next <i class="fas fa-chevron-right"></i></button>
+          </div>
+          <div id="pageInfo" style="font-size: 0.9rem; color: var(--color-text-light);">Page 1 of 1</div>
+        </div>
       </div>
     </section>
 
@@ -241,6 +262,16 @@
 // ============================================================
 const API_BASE = 'http://127.0.0.1:8000';
 const TOKEN_KEY = 'enkang_token';
+const DEFAULT_LIMIT = 10;
+
+// ============================================================
+// STATE
+// ============================================================
+let animals = [];
+let currentSkip = 0;
+let currentLimit = DEFAULT_LIMIT;
+let currentSearch = '';
+let totalItems = 0;
 
 // ============================================================
 // UTILITY: Toast
@@ -251,7 +282,11 @@ function showToast(message, type = 'success') {
   toast.className = `toast ${type}`;
   toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span>`;
   container.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 4000);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 // ============================================================
@@ -285,7 +320,7 @@ function checkAuthState() {
   if (token) {
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('appSection').classList.remove('hidden');
-    loadAnimals();
+    loadAnimals(0, '');
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-herd').classList.add('active');
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -372,19 +407,27 @@ document.getElementById('authForm').addEventListener('submit', async function(e)
 document.getElementById('logoutBtn').addEventListener('click', logout);
 
 // ============================================================
-// APP LOGIC
+// APP LOGIC (Pagination & Search)
 // ============================================================
-let animals = [];
 const herdList = document.getElementById('herdList');
 const herdCount = document.getElementById('herdCount');
 const alertList = document.getElementById('alertList');
 const alertCount = document.getElementById('alertCount');
 const checkupSelect = document.getElementById('checkupAnimal');
 
+// --- Pagination Elements ---
+const prevPageBtn = document.getElementById('prevPageBtn');
+const nextPageBtn = document.getElementById('nextPageBtn');
+const pageInfo = document.getElementById('pageInfo');
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+
 function renderHerd() {
-  if (animals.length === 0) {
-    herdList.innerHTML = `<div class="empty-state"><i class="fas fa-cow"></i><p>No animals yet. Add your first one!</p></div>`;
+  if (!animals || animals.length === 0) {
+    herdList.innerHTML = `<div class="empty-state"><i class="fas fa-cow"></i><p>No animals found.</p></div>`;
     herdCount.textContent = '0';
+    updatePaginationButtons();
     return;
   }
   let html = '<div class="animal-grid">';
@@ -393,7 +436,8 @@ function renderHerd() {
   });
   html += '</div>';
   herdList.innerHTML = html;
-  herdCount.textContent = animals.length;
+  herdCount.textContent = totalItems;
+  updatePaginationButtons();
 }
 
 function renderAlerts(alerts) {
@@ -410,22 +454,48 @@ function renderAlerts(alerts) {
   alertCount.textContent = alerts.length;
 }
 
-function populateCheckupSelect() {
-  checkupSelect.innerHTML = '<option value="">-- Choose an animal --</option>';
-  animals.forEach(animal => {
-    const option = document.createElement('option');
-    option.value = animal.id;
-    option.textContent = `${animal.name} (${animal.animal_type})`;
-    checkupSelect.appendChild(option);
-  });
+function updatePaginationButtons() {
+  const totalPages = Math.ceil(totalItems / currentLimit) || 1;
+  const currentPage = Math.floor(currentSkip / currentLimit) + 1;
+  pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+  prevPageBtn.disabled = currentSkip === 0;
+  nextPageBtn.disabled = currentSkip + currentLimit >= totalItems;
 }
 
-async function loadAnimals() {
+async function fetchAllAnimalsForDropdown() {
   try {
-    animals = await apiFetch('/api/animals');
+    const token = localStorage.getItem(TOKEN_KEY);
+    const response = await fetch(`${API_BASE}/api/animals?limit=999`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch');
+    const data = await response.json();
+    const allAnimals = data.items || [];
+    checkupSelect.innerHTML = '<option value="">-- Choose an animal --</option>';
+    allAnimals.forEach(animal => {
+      const option = document.createElement('option');
+      option.value = animal.id;
+      option.textContent = `${animal.name} (${animal.animal_type})`;
+      checkupSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error('Failed to fetch all animals for dropdown:', err);
+  }
+}
+
+// --- loadAnimals with Pagination & Search ---
+async function loadAnimals(skip = 0, search = null) {
+  if (skip !== undefined) currentSkip = skip;
+  if (search !== null) currentSearch = search;
+
+  try {
+    const url = `/api/animals?skip=${currentSkip}&limit=${currentLimit}${currentSearch ? `&search=${encodeURIComponent(currentSearch)}` : ''}`;
+    const data = await apiFetch(url);
+    animals = data.items || [];
+    totalItems = data.total || 0;
     renderHerd();
-    populateCheckupSelect();
     await loadAlerts();
+    fetchAllAnimalsForDropdown();
   } catch (err) {
     if (!err.message.includes('Session expired')) {
       showToast('Failed to load herd.', 'error');
@@ -442,8 +512,36 @@ async function loadAlerts() {
   }
 }
 
+// --- Search Handlers ---
+searchBtn.addEventListener('click', function() {
+  const term = searchInput.value.trim();
+  loadAnimals(0, term);
+});
+
+clearSearchBtn.addEventListener('click', function() {
+  searchInput.value = '';
+  loadAnimals(0, '');
+});
+
+searchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    searchBtn.click();
+  }
+});
+
+// --- Pagination Handlers ---
+prevPageBtn.addEventListener('click', function() {
+  const newSkip = Math.max(0, currentSkip - currentLimit);
+  loadAnimals(newSkip);
+});
+
+nextPageBtn.addEventListener('click', function() {
+  const newSkip = currentSkip + currentLimit;
+  loadAnimals(newSkip);
+});
+
 // ============================================================
-// PROFILE FUNCTIONS (FIXED: Added missing implementations)
+// PROFILE FUNCTIONS
 // ============================================================
 async function loadProfile() {
   try {
@@ -455,7 +553,6 @@ async function loadProfile() {
   }
 }
 
-// Update Email
 document.getElementById('updateEmailForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const email = document.getElementById('profileEmail').value.trim();
@@ -467,14 +564,12 @@ document.getElementById('updateEmailForm').addEventListener('submit', async func
       body: JSON.stringify({ email })
     });
     showToast('✅ Email updated successfully!');
-    // Refresh the profile to show the updated email
     await loadProfile();
   } catch (err) {
     showToast('Error: ' + err.message, 'error');
   }
 });
 
-// Change Password
 document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const current_password = document.getElementById('currentPassword').value.trim();
@@ -509,7 +604,7 @@ document.getElementById('changePasswordForm').addEventListener('submit', async f
 });
 
 // ============================================================
-// TAB SWITCHING (FIXED: Added profile case)
+// TAB SWITCHING
 // ============================================================
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', function() {
@@ -520,8 +615,9 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById(panelId).classList.add('active');
 
     if (panelId === 'panel-alerts') loadAlerts();
-    else if (panelId === 'panel-herd') loadAnimals();
-    else if (panelId === 'panel-profile') loadProfile();
+    else if (panelId === 'panel-herd') {
+      loadAnimals(currentSkip);
+    } else if (panelId === 'panel-profile') loadProfile();
   });
 });
 
@@ -539,7 +635,7 @@ document.getElementById('addAnimalForm').addEventListener('submit', async functi
     await apiFetch('/api/animals', { method: 'POST', body: JSON.stringify({ name, animal_type, birth_year, color }) });
     showToast(`✅ ${name} registered!`);
     this.reset();
-    await loadAnimals();
+    loadAnimals(0, currentSearch);
   } catch (err) { showToast('Error: ' + err.message, 'error'); }
 });
 
