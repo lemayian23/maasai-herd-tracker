@@ -137,17 +137,19 @@
 
     <!-- Panel: Herd -->
     <section class="panel active" id="panel-herd" role="tabpanel">
-      <div class="card">
+    <div class="card">
         <div class="card-header">
-          <h2><i class="fas fa-paw" style="color:var(--color-primary);"></i> Your Herd</h2>
-          <span class="badge" id="herdCount">0</span>
+        <h2><i class="fas fa-paw" style="color:var(--color-primary);"></i> Your Herd</h2>
+        <span class="badge" id="herdCount">0</span>
         </div>
 
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-          <input type="text" id="searchInput" placeholder="Search by name..." style="flex: 1; min-width: 150px; padding: 0.6rem 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 1rem;" />
-          <button id="searchBtn" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
-          <button id="clearSearchBtn" class="btn" style="background: var(--color-border);"><i class="fas fa-times"></i> Clear</button>
+        <input type="text" id="searchInput" placeholder="Search by name..." style="flex: 1; min-width: 150px; padding: 0.6rem 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 1rem;" />
+        <button id="searchBtn" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+        <button id="clearSearchBtn" class="btn" style="background: var(--color-border);"><i class="fas fa-times"></i> Clear</button>
+        <!-- NEW: Toggle Deleted -->
+        <button id="toggleDeletedBtn" class="btn" style="background: var(--color-border);"><i class="fas fa-trash-alt"></i> Show Deleted</button>
         </div>
 
         <!-- Animal List -->
@@ -155,13 +157,13 @@
 
         <!-- Pagination Controls -->
         <div id="paginationControls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
-          <div>
+        <div>
             <button id="prevPageBtn" class="btn" disabled><i class="fas fa-chevron-left"></i> Previous</button>
             <button id="nextPageBtn" class="btn">Next <i class="fas fa-chevron-right"></i></button>
-          </div>
-          <div id="pageInfo" style="font-size: 0.9rem; color: var(--color-text-light);">Page 1 of 1</div>
         </div>
-      </div>
+        <div id="pageInfo" style="font-size: 0.9rem; color: var(--color-text-light);">Page 1 of 1</div>
+        </div>
+    </div>
     </section>
 
     <!-- Panel: Add Animal -->
@@ -272,6 +274,7 @@ let currentSkip = 0;
 let currentLimit = DEFAULT_LIMIT;
 let currentSearch = '';
 let totalItems = 0;
+let showDeleted = false;
 
 // ============================================================
 // UTILITY: Toast
@@ -432,12 +435,61 @@ function renderHerd() {
   }
   let html = '<div class="animal-grid">';
   animals.forEach(animal => {
-    html += `<div class="animal-card"><h3>${animal.name}</h3><div class="meta"><i class="fas fa-tag"></i> ${animal.animal_type}</div><div class="meta"><i class="fas fa-calendar"></i> ${animal.birth_year}</div><div class="meta"><i class="fas fa-palette"></i> ${animal.color || 'N/A'}</div></div>`;
+    const isDeleted = animal.deleted_at !== null && animal.deleted_at !== undefined;
+    html += `<div class="animal-card" style="${isDeleted ? 'opacity: 0.6; border-left-color: #999;' : ''}">`;
+    html += `<h3>${animal.name} ${isDeleted ? '<span style="font-size:0.7rem;color:#999;">(Deleted)</span>' : ''}</h3>`;
+    html += `<div class="meta"><i class="fas fa-tag"></i> ${animal.animal_type}</div>`;
+    html += `<div class="meta"><i class="fas fa-calendar"></i> ${animal.birth_year}</div>`;
+    html += `<div class="meta"><i class="fas fa-palette"></i> ${animal.color || 'N/A'}</div>`;
+    html += `<div style="margin-top: 0.5rem;">`;
+    if (isDeleted) {
+      html += `<button class="btn btn-success restore-btn" data-id="${animal.id}" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;"><i class="fas fa-undo"></i> Restore</button>`;
+    } else {
+      html += `<button class="btn btn-danger delete-btn" data-id="${animal.id}" style="background: var(--color-danger); color: white; padding: 0.25rem 0.75rem; font-size: 0.75rem;"><i class="fas fa-trash"></i> Delete</button>`;
+    }
+    html += `</div>`;
+    html += `</div>`;
   });
   html += '</div>';
   herdList.innerHTML = html;
   herdCount.textContent = totalItems;
   updatePaginationButtons();
+
+  // Attach event listeners to delete buttons
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      const id = parseInt(this.dataset.id);
+      const name = this.closest('.animal-card').querySelector('h3').textContent.trim();
+      if (confirm(`Are you sure you want to delete "${name}"? This can be restored later.`)) {
+        try {
+          await apiFetch(`/api/animals/${id}/delete`, { method: 'PATCH' });
+          showToast(`✅ ${name} has been deleted.`, 'success');
+          loadAnimals(currentSkip, currentSearch);
+        } catch (err) {
+          showToast('Error deleting: ' + err.message, 'error');
+        }
+      }
+    });
+  });
+
+  // Attach event listeners to restore buttons
+  document.querySelectorAll('.restore-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      const id = parseInt(this.dataset.id);
+      const name = this.closest('.animal-card').querySelector('h3').textContent.replace('(Deleted)', '').trim();
+      if (confirm(`Are you sure you want to restore "${name}"?`)) {
+        try {
+          await apiFetch(`/api/animals/${id}/restore`, { method: 'PATCH' });
+          showToast(`✅ ${name} has been restored.`, 'success');
+          loadAnimals(currentSkip, currentSearch);
+        } catch (err) {
+          showToast('Error restoring: ' + err.message, 'error');
+        }
+      }
+    });
+  });
 }
 
 function renderAlerts(alerts) {
@@ -489,7 +541,7 @@ async function loadAnimals(skip = 0, search = null) {
   if (search !== null) currentSearch = search;
 
   try {
-    const url = `/api/animals?skip=${currentSkip}&limit=${currentLimit}${currentSearch ? `&search=${encodeURIComponent(currentSearch)}` : ''}`;
+    const url = `/api/animals?skip=${currentSkip}&limit=${currentLimit}${currentSearch ? `&search=${encodeURIComponent(currentSearch)}` : ''}&include_deleted=${showDeleted}`;
     const data = await apiFetch(url);
     animals = data.items || [];
     totalItems = data.total || 0;
@@ -538,6 +590,15 @@ prevPageBtn.addEventListener('click', function() {
 nextPageBtn.addEventListener('click', function() {
   const newSkip = currentSkip + currentLimit;
   loadAnimals(newSkip);
+});
+
+// --- Toggle Deleted Handler ---
+const toggleDeletedBtn = document.getElementById('toggleDeletedBtn');
+toggleDeletedBtn.addEventListener('click', function() {
+  showDeleted = !showDeleted;
+  this.textContent = showDeleted ? 'Hide Deleted' : 'Show Deleted';
+  this.classList.toggle('btn-primary');
+  loadAnimals(0, currentSearch); // Reset to first page
 });
 
 // ============================================================
