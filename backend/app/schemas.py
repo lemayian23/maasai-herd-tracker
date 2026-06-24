@@ -58,8 +58,6 @@ class HealthAlertResponse(BaseModel):
     milk_yield: float
     warning: str
 
-# app/schemas.py 
-
 # --- User Schemas ---
 class UserBase(BaseModel):
     username: str
@@ -86,3 +84,12 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+
+# --- Profile & Settings Schemas ---
+class UserUpdateEmail(BaseModel):
+    email: str
+
+class UserChangePassword(BaseModel):
+    current_password: str
+    new_password: str

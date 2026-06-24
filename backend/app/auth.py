@@ -1,29 +1,53 @@
-# app/auth.py (New file)
+# app/auth.py (NO passlib, uses bcrypt directly)
 
+import hashlib
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
 
-# Configuration (In a real job, these come from .env)
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # CHANGE THIS
+# Configuration
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")  # We will create this endpoint
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+# ---------- PASSWORD HASHING (Direct bcrypt, no passlib) ----------
+def get_password_hash(password: str) -> str:
+    """
+    Hashes a password using SHA256 pre-hashing + bcrypt.
+    This avoids bcrypt's 72-byte limit and handles any encoding issues.
+    """
+    # 1. Pre-hash with SHA256 to get a consistent 64-character hex string
+    sha_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    # 2. Encode to bytes (bcrypt expects bytes)
+    password_bytes = sha_password.encode('utf-8')
+    # 3. Generate salt and hash
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # 4. Return as a string (decode from bytes)
+    return hashed.decode('utf-8')
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verifies a password by SHA256 hashing the plain text first, 
+    then comparing with bcrypt.
+    """
+    # 1. Pre-hash the plain text password
+    sha_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+    # 2. Encode both to bytes
+    password_bytes = sha_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    # 3. Let bcrypt check it
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
+# ---------- AUTHENTICATION & TOKEN LOGIC ----------
 def authenticate_user(db: Session, username: str, password: str):
     user = db.query(models.User).filter(models.User.username == username).first()
     if not user:
@@ -42,7 +66,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# --- The "Dependency" that protects your routes ---
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
