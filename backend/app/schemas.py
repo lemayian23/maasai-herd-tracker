@@ -1,56 +1,46 @@
-# Line 1
+# app/schemas.py (FULL CORRECTED VERSION)
+
 from pydantic import BaseModel, Field
-# Line 2
-from datetime import date
-# Line 3
+from datetime import date, datetime
 from typing import Optional, List
 
 # --- Animal Schemas ---
-# Line 6
 class AnimalBase(BaseModel):
     name: str
     animal_type: str
     birth_year: int
     color: str
 
-# Line 12
 class AnimalCreate(AnimalBase):
     pass
 
-# Line 15
 class AnimalResponse(AnimalBase):
     id: int
     health_records: List["HealthRecordResponse"] = []
+    deleted_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
-
 # --- Health Record Schemas ---
-# Line 24  <-- THIS IS THE ERROR LINE
 class HealthRecordBase(BaseModel):
     animal_id: int
-    # Line 27: ✅ FIXED - Renamed 'date' to 'record_date' to avoid clash
-    record_date: date = Field(default_factory=date.today)  
+    record_date: date = Field(default_factory=date.today)
     temperature: float
-    appetite: str  
+    appetite: str
     milk_yield: float
     notes: Optional[str] = None
 
-# Line 34
 class HealthRecordCreate(HealthRecordBase):
     pass
 
-# Line 37
 class HealthRecordResponse(HealthRecordBase):
     id: int
 
     class Config:
         from_attributes = True
 
-
 # --- Alert Schema ---
-# Line 45
 class HealthAlertResponse(BaseModel):
     animal_id: int
     animal_name: str
@@ -85,8 +75,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-
-# --- Profile & Settings Schemas ---
+# --- Profile & Settings Schemas (MISSING - ADD THESE!) ---
 class UserUpdateEmail(BaseModel):
     email: str
 

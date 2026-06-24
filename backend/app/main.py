@@ -1,5 +1,8 @@
 # app/main.py (Full rewrite with Auth)
 
+import csv
+from io import StringIO
+from fastapi.responses import Response
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -208,6 +211,56 @@ def change_password(
     db.commit()
     
     return {"message": "Password updated successfully."}
+
+
+@app.get("/api/animals/export")
+def export_animals(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Export all animals (with their latest health record) as a CSV file.
+    """
+    # Fetch all animals belonging to the user (excluding soft-deleted ones)
+    animals = db.query(models.Animal).filter(
+        models.Animal.owner_id == current_user.id,
+        models.Animal.deleted_at.is_(None)
+    ).all()
+    
+    # Create a CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write the header row
+    writer.writerow([
+        "ID", "Name", "Type", "Birth Year", "Color",
+        "Last Checkup Date", "Last Temperature (°C)", "Last Appetite", "Last Milk Yield (L)"
+    ])
+    
+    # Write data for each animal
+    for animal in animals:
+        # Get the most recent health record for this animal
+        latest_record = db.query(models.HealthRecord).filter(
+            models.HealthRecord.animal_id == animal.id
+        ).order_by(models.HealthRecord.record_date.desc()).first()
+        
+        writer.writerow([
+            animal.id,
+            animal.name,
+            animal.animal_type,
+            animal.birth_year,
+            animal.color or "N/A",
+            latest_record.record_date if latest_record else "Never checked",
+            latest_record.temperature if latest_record else "N/A",
+            latest_record.appetite if latest_record else "N/A",
+            latest_record.milk_yield if latest_record else "N/A"
+        ])
+    
+    # Prepare the response as a downloadable file
+    headers = {
+        'Content-Disposition': 'attachment; filename="herd_export.csv"'
+    }
+    return Response(output.getvalue(), media_type="text/csv", headers=headers)
 
 @app.get("/api/alerts", response_model=List[schemas.HealthAlertResponse])
 def get_health_alerts(
