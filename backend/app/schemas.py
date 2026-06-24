@@ -57,3 +57,32 @@ class HealthAlertResponse(BaseModel):
     temperature: float
     milk_yield: float
     warning: str
+
+# app/schemas.py 
+
+# --- User Schemas ---
+class UserBase(BaseModel):
+    username: str
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(UserBase):
+    id: int
+    created_at: date
+
+    class Config:
+        from_attributes = True
+
+# --- Token Schemas ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
