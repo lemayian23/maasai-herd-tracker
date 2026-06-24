@@ -1,32 +1,36 @@
+# Line 1
 from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Text
+# Line 2
 from sqlalchemy.orm import relationship
+# Line 3
 from app.database import Base
+# Line 4
 from datetime import date
 
+# Line 6
 class Animal(Base):
     __tablename__ = "animals"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    animal_type = Column(String)  # e.g., "Cow", "Goat", "Sheep"
+    animal_type = Column(String)
     birth_year = Column(Integer)
-    color = Column(String)        # e.g., "Black/White"
+    color = Column(String)
 
-    # This creates a "virtual" list of health records. 
-    # When you fetch an Animal, you can also get its health_records.
     health_records = relationship("HealthRecord", back_populates="animal")
 
 
+# Line 18  <-- THIS IS THE ERROR LINE
 class HealthRecord(Base):
     __tablename__ = "health_records"
 
     id = Column(Integer, primary_key=True, index=True)
     animal_id = Column(Integer, ForeignKey("animals.id"))
-    date = Column(Date, default=date.today)
-    temperature = Column(Float)   # Celsius
-    appetite = Column(String)     # "Good", "Low", "None"
-    milk_yield = Column(Float)    # Liters
+    # Line 25: ✅ FIXED - Changed from 'date' to 'record_date' to match schema
+    record_date = Column(Date, default=date.today)  
+    temperature = Column(Float)
+    appetite = Column(String)
+    milk_yield = Column(Float)
     notes = Column(Text, nullable=True)
 
-    # This links back to the Animal
     animal = relationship("Animal", back_populates="health_records")
