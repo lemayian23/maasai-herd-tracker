@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field  # <-- ADD Field to this import
 from datetime import date
 from typing import Optional, List
 
@@ -10,23 +10,23 @@ class AnimalBase(BaseModel):
     color: str
 
 class AnimalCreate(AnimalBase):
-    pass  # Inherits all fields from AnimalBase
+    pass
 
 class AnimalResponse(AnimalBase):
     id: int
-    # Optional: Nest the health records inside the animal response
     health_records: List["HealthRecordResponse"] = []
 
     class Config:
-        from_attributes = True  # Enables ORM conversion (SQLAlchemy -> Pydantic)
+        from_attributes = True
 
 
 # --- Health Record Schemas ---
 class HealthRecordBase(BaseModel):
     animal_id: int
-    date: Optional[date] = date.today()
+    # ✅ FIX: Use default_factory to call date.today() dynamically
+    date: date = Field(default_factory=date.today)  
     temperature: float
-    appetite: str  # 'Good', 'Low', 'None'
+    appetite: str  
     milk_yield: float
     notes: Optional[str] = None
 
@@ -40,10 +40,10 @@ class HealthRecordResponse(HealthRecordBase):
         from_attributes = True
 
 
-# --- Alert Schema (For our custom health warning) ---
+# --- Alert Schema ---
 class HealthAlertResponse(BaseModel):
     animal_id: int
     animal_name: str
     temperature: float
     milk_yield: float
-    warning: str  # e.g., "Fever detected!" or "Low milk production"
+    warning: str
