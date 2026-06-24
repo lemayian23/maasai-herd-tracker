@@ -1,5 +1,6 @@
 # app/main.py (Full rewrite with Auth)
 
+from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -79,14 +80,44 @@ def create_animal(
     db.refresh(db_animal)
     return db_animal
 
-@app.get("/api/animals", response_model=List[schemas.AnimalResponse])
+# app/main.py (Replace the GET /api/animals endpoint)
+
+from typing import Optional  # Ensure this is imported at the top
+
+@app.get("/api/animals", response_model=schemas.PaginatedAnimalResponse)
 def get_all_animals(
+    skip: int = 0,
+    limit: int = 10,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)  # <-- PROTECTED
+    current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Only fetch animals belonging to this specific user
-    animals = db.query(models.Animal).filter(models.Animal.owner_id == current_user.id).all()
-    return animals
+    """
+    Get all animals for the current user with pagination and search.
+    - skip: number of records to skip (default 0)
+    - limit: max records to return (default 10)
+    - search: optional search term for animal name (case-insensitive)
+    """
+    # Base query: only this user's animals
+    query = db.query(models.Animal).filter(models.Animal.owner_id == current_user.id)
+    
+    # Apply search filter if provided
+    if search:
+        # ilike is case-insensitive for SQLite/PostgreSQL
+        query = query.filter(models.Animal.name.ilike(f"%{search}%"))
+    
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply pagination
+    items = query.offset(skip).limit(limit).all()
+    
+    return schemas.PaginatedAnimalResponse(
+        items=items,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
 
 @app.get("/api/animals/{animal_id}", response_model=schemas.AnimalResponse)
 def get_animal(
@@ -102,7 +133,7 @@ def get_animal(
         raise HTTPException(status_code=404, detail="Animal not found")
     return animal
 
-# YOU MUST UPDATE THE HEALTH RECORDS ENDPOINTS TOO!
+# MUST UPDATE THE HEALTH RECORDS ENDPOINTS TOO!
 # I will include the updated version below.
 
 @app.post("/api/records", response_model=schemas.HealthRecordResponse, status_code=201)
