@@ -12,10 +12,13 @@ class Animal(Base):
     __tablename__ = "animals"
 
     id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String, index=True)
     animal_type = Column(String)
     birth_year = Column(Integer)
     color = Column(String)
+
+    owner = relationship("User", back_populates="animals")
 
     health_records = relationship("HealthRecord", back_populates="animal")
 
