@@ -426,6 +426,40 @@ const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 
+// --- Export CSV Handler ---
+document.getElementById('exportBtn').addEventListener('click', async function() {
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const response = await fetch(`${API_BASE}/api/animals/export`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Export failed');
+    }
+    
+    // Convert the response to a Blob (binary large object)
+    const blob = await response.blob();
+    
+    // Create a temporary link to download the file
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'herd_export.csv'; // Filename for the download
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url); // Clean up memory
+    
+    showToast('✅ Herd exported successfully!', 'success');
+  } catch (err) {
+    showToast('Error exporting herd: ' + err.message, 'error');
+  }
+});
+
 function renderHerd() {
   if (!animals || animals.length === 0) {
     herdList.innerHTML = `<div class="empty-state"><i class="fas fa-cow"></i><p>No animals found.</p></div>`;
