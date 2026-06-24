@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
-    /* --- CSS Remains 99% the same as before --- */
+    /* --- CSS --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --color-primary: #C25A3C; --color-primary-dark: #A3452A;
@@ -22,16 +22,13 @@
     body { font-family: var(--font-family); background: var(--color-bg); color: var(--color-text); padding: 1rem; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
     .app { max-width: 1200px; width: 100%; margin: 0 auto; }
 
-    /* Auth Container */
     .auth-container { max-width: 420px; margin: 2rem auto; background: var(--color-card); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-md); }
     .auth-container h2 { margin-bottom: 0.5rem; }
     .auth-container .subtitle { color: var(--color-text-light); margin-bottom: 1.5rem; }
     .auth-toggle { text-align: center; margin-top: 1rem; color: var(--color-text-light); }
     .auth-toggle a { color: var(--color-primary); font-weight: 600; cursor: pointer; text-decoration: none; }
-
     .hidden { display: none !important; }
-    
-    /* Header */
+
     .header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0 2rem; flex-wrap: wrap; gap: 0.5rem 1rem; }
     .header-brand { display: flex; align-items: center; gap: 0.75rem; }
     .header-brand i { font-size: 2rem; color: var(--color-primary); background: var(--color-card); padding: 0.5rem; border-radius: 50%; box-shadow: var(--shadow-sm); }
@@ -40,7 +37,6 @@
     .logout-btn { background: none; border: 1px solid var(--color-border); padding: 0.5rem 1rem; border-radius: 50px; cursor: pointer; font-weight: 500; transition: 0.2s; }
     .logout-btn:hover { background: var(--color-danger); color: white; border-color: var(--color-danger); }
 
-    /* Tabs, Cards, Forms, Alerts - SAME AS BEFORE */
     .nav-tabs { display: flex; gap: 0.25rem; background: var(--color-card); border-radius: var(--radius); padding: 0.25rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem; flex-wrap: wrap; }
     .nav-tab { flex: 1; min-width: 100px; padding: 0.75rem 1.25rem; text-align: center; font-weight: 600; font-size: 0.9rem; border: none; background: transparent; border-radius: var(--radius-sm); color: var(--color-text-light); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
     .nav-tab:hover { background: rgba(194, 90, 60, 0.08); color: var(--color-primary); }
@@ -81,6 +77,10 @@
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } .animal-grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 480px) { .animal-grid { grid-template-columns: 1fr; } .card { padding: 1rem; } }
+
+    /* Profile specific */
+    hr { border: none; border-top: 1px solid var(--color-border); margin: 1.5rem 0; }
+    #profileUsername { background: #f5f5f5 !important; cursor: not-allowed; opacity: 0.8; }
   </style>
 </head>
 <body>
@@ -91,7 +91,7 @@
     <div class="auth-container">
       <h2 id="authTitle">Welcome Back</h2>
       <p class="subtitle" id="authSubtitle">Log in to manage your herd.</p>
-      
+
       <form id="authForm">
         <div class="form-group">
           <label for="authUsername">Username</label>
@@ -107,7 +107,7 @@
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="authSubmitBtn">Login</button>
       </form>
-      
+
       <div class="auth-toggle">
         <span id="authToggleText">Don't have an account?</span>
         <a id="authToggleLink">Register</a>
@@ -132,6 +132,7 @@
       <button class="nav-tab" data-panel="panel-add" role="tab"><i class="fas fa-plus-circle"></i> Add Animal</button>
       <button class="nav-tab" data-panel="panel-checkup" role="tab"><i class="fas fa-stethoscope"></i> Checkup</button>
       <button class="nav-tab" data-panel="panel-alerts" role="tab"><i class="fas fa-exclamation-triangle"></i> Alerts</button>
+      <button class="nav-tab" data-panel="panel-profile" role="tab"><i class="fas fa-user-cog"></i> Profile</button>
     </nav>
 
     <!-- Panel: Herd -->
@@ -184,6 +185,50 @@
         <div id="alertList"><div class="empty-state"><i class="fas fa-check-circle" style="color:var(--color-success);"></i><p>All animals are healthy! No alerts.</p></div></div>
       </div>
     </section>
+
+    <!-- Panel: Profile -->
+    <section class="panel" id="panel-profile" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-user-cog" style="color:var(--color-primary);"></i> My Profile</h2></div>
+
+        <!-- Read-only Username -->
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="profileUsername" disabled />
+        </div>
+
+        <!-- Update Email -->
+        <form id="updateEmailForm">
+          <div class="form-group">
+            <label for="profileEmail">Email Address</label>
+            <input type="email" id="profileEmail" placeholder="Enter new email" required />
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Email</button>
+        </form>
+
+        <hr />
+
+        <!-- Change Password -->
+        <h3 style="margin-bottom: 1rem;">Change Password</h3>
+        <form id="changePasswordForm">
+          <div class="form-group">
+            <label for="currentPassword">Current Password</label>
+            <input type="password" id="currentPassword" placeholder="Enter current password" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <input type="password" id="newPassword" placeholder="Enter new password" required />
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input type="password" id="confirmPassword" placeholder="Confirm new password" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success"><i class="fas fa-key"></i> Change Password</button>
+        </form>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -210,7 +255,7 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
-// API CLIENT (Automatically attaches JWT if logged in)
+// API CLIENT
 // ============================================================
 async function apiFetch(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
@@ -223,7 +268,6 @@ async function apiFetch(endpoint, options = {}) {
   if (!response.ok) {
     const errorText = await response.text();
     if (response.status === 401) {
-      // Token expired or invalid. Force logout.
       localStorage.removeItem(TOKEN_KEY);
       checkAuthState();
       throw new Error('Session expired. Please login again.');
@@ -241,8 +285,7 @@ function checkAuthState() {
   if (token) {
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('appSection').classList.remove('hidden');
-    loadAnimals(); // Load initial data
-    // Switch to Herd tab by default
+    loadAnimals();
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-herd').classList.add('active');
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -260,7 +303,7 @@ function logout() {
 }
 
 // ============================================================
-// AUTH FORM (Login / Register Toggle)
+// AUTH FORM
 // ============================================================
 let isLoginMode = true;
 
@@ -272,7 +315,7 @@ document.getElementById('authToggleLink').addEventListener('click', function(e) 
   const btn = document.getElementById('authSubmitBtn');
   const toggleText = document.getElementById('authToggleText');
   const emailGroup = document.getElementById('emailGroup');
-  
+
   if (isLoginMode) {
     title.textContent = 'Welcome Back';
     subtitle.textContent = 'Log in to manage your herd.';
@@ -301,7 +344,6 @@ document.getElementById('authForm').addEventListener('submit', async function(e)
 
   try {
     if (isLoginMode) {
-      // LOGIN
       const data = await apiFetch('/api/login', {
         method: 'POST',
         body: JSON.stringify({ username, password })
@@ -310,15 +352,13 @@ document.getElementById('authForm').addEventListener('submit', async function(e)
       showToast('Login successful!', 'success');
       checkAuthState();
     } else {
-      // REGISTER
       await apiFetch('/api/register', {
         method: 'POST',
         body: JSON.stringify({ username, email, password })
       });
       showToast('Registration successful! Please login.', 'success');
-      // Switch to login mode
       isLoginMode = true;
-      document.getElementById('authToggleLink').click(); // Trigger toggle logic
+      document.getElementById('authToggleLink').click();
       document.getElementById('authPassword').value = '';
     }
   } catch (err) {
@@ -332,7 +372,7 @@ document.getElementById('authForm').addEventListener('submit', async function(e)
 document.getElementById('logoutBtn').addEventListener('click', logout);
 
 // ============================================================
-// APP LOGIC (Protected routes)
+// APP LOGIC
 // ============================================================
 let animals = [];
 const herdList = document.getElementById('herdList');
@@ -398,23 +438,96 @@ async function loadAlerts() {
     const alerts = await apiFetch('/api/alerts');
     renderAlerts(alerts);
   } catch (err) {
-    // Silent fail for alerts if not critical
+    // Silent fail
   }
 }
 
-// Tab switching
+// ============================================================
+// PROFILE FUNCTIONS (FIXED: Added missing implementations)
+// ============================================================
+async function loadProfile() {
+  try {
+    const user = await apiFetch('/api/users/me');
+    document.getElementById('profileUsername').value = user.username;
+    document.getElementById('profileEmail').value = user.email;
+  } catch (err) {
+    showToast('Failed to load profile.', 'error');
+  }
+}
+
+// Update Email
+document.getElementById('updateEmailForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('profileEmail').value.trim();
+  if (!email) { showToast('Please enter an email.', 'error'); return; }
+
+  try {
+    await apiFetch('/api/users/me/email', {
+      method: 'PATCH',
+      body: JSON.stringify({ email })
+    });
+    showToast('✅ Email updated successfully!');
+    // Refresh the profile to show the updated email
+    await loadProfile();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+});
+
+// Change Password
+document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const current_password = document.getElementById('currentPassword').value.trim();
+  const new_password = document.getElementById('newPassword').value.trim();
+  const confirm_password = document.getElementById('confirmPassword').value.trim();
+
+  if (!current_password || !new_password || !confirm_password) {
+    showToast('Please fill in all password fields.', 'error');
+    return;
+  }
+  if (new_password.length < 4) {
+    showToast('New password must be at least 4 characters.', 'error');
+    return;
+  }
+  if (new_password !== confirm_password) {
+    showToast('New passwords do not match.', 'error');
+    return;
+  }
+
+  try {
+    await apiFetch('/api/users/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password, new_password })
+    });
+    showToast('✅ Password changed successfully!');
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+});
+
+// ============================================================
+// TAB SWITCHING (FIXED: Added profile case)
+// ============================================================
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', function() {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     this.classList.add('active');
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(this.dataset.panel).classList.add('active');
-    if (this.dataset.panel === 'panel-alerts') loadAlerts();
-    if (this.dataset.panel === 'panel-herd') loadAnimals();
+    const panelId = this.dataset.panel;
+    document.getElementById(panelId).classList.add('active');
+
+    if (panelId === 'panel-alerts') loadAlerts();
+    else if (panelId === 'panel-herd') loadAnimals();
+    else if (panelId === 'panel-profile') loadProfile();
   });
 });
 
-// Add Animal Form
+// ============================================================
+// ADD ANIMAL FORM
+// ============================================================
 document.getElementById('addAnimalForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const name = document.getElementById('animalName').value.trim();
@@ -430,7 +543,9 @@ document.getElementById('addAnimalForm').addEventListener('submit', async functi
   } catch (err) { showToast('Error: ' + err.message, 'error'); }
 });
 
-// Checkup Form
+// ============================================================
+// CHECKUP FORM
+// ============================================================
 document.getElementById('checkupForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const animal_id = parseInt(document.getElementById('checkupAnimal').value);

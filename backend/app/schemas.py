@@ -93,3 +93,10 @@ class UserUpdateEmail(BaseModel):
 class UserChangePassword(BaseModel):
     current_password: str
     new_password: str
+
+# --- Pagination Schema ---
+class PaginatedAnimalResponse(BaseModel):
+    items: List[AnimalResponse]
+    total: int
+    skip: int
+    limit: int
