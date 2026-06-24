@@ -239,5 +239,64 @@ def get_health_alerts(
                     "warning": warning
                 })
     return alerts
+# --- SOFT DELETE ENDPOINTS ---
 
+@app.patch("/api/animals/{animal_id}/delete", response_model=schemas.AnimalDeleteResponse)
+def soft_delete_animal(
+    animal_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Soft delete an animal by setting deleted_at to now.
+    """
+    # Find the animal and ensure it belongs to the current user
+    animal = db.query(models.Animal).filter(
+        models.Animal.id == animal_id,
+        models.Animal.owner_id == current_user.id
+    ).first()
     
+    if not animal:
+        raise HTTPException(status_code=404, detail="Animal not found")
+    
+    if animal.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="Animal is already deleted")
+    
+    # Set the deleted_at timestamp
+    animal.deleted_at = datetime.now()
+    db.commit()
+    
+    return {
+        "message": f"Animal '{animal.name}' has been deleted.",
+        "animal_id": animal.id,
+        "deleted_at": animal.deleted_at
+    }
+
+@app.patch("/api/animals/{animal_id}/restore", response_model=schemas.AnimalRestoreResponse)
+def restore_animal(
+    animal_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Restore a soft-deleted animal by setting deleted_at to NULL.
+    """
+    animal = db.query(models.Animal).filter(
+        models.Animal.id == animal_id,
+        models.Animal.owner_id == current_user.id
+    ).first()
+    
+    if not animal:
+        raise HTTPException(status_code=404, detail="Animal not found")
+    
+    if animal.deleted_at is None:
+        raise HTTPException(status_code=400, detail="Animal is not deleted")
+    
+    # Clear the deleted_at timestamp
+    animal.deleted_at = None
+    db.commit()
+    
+    return {
+        "message": f"Animal '{animal.name}' has been restored.",
+        "animal_id": animal.id
+    }   
