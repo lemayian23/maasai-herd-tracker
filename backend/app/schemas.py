@@ -1,8 +1,7 @@
-from pydantic import BaseModel, Field  # <-- ADD Field to this import
+from pydantic import BaseModel, Field
 from datetime import date
 from typing import Optional, List
 
-# --- Animal Schemas ---
 class AnimalBase(BaseModel):
     name: str
     animal_type: str
@@ -19,14 +18,11 @@ class AnimalResponse(AnimalBase):
     class Config:
         from_attributes = True
 
-
-# --- Health Record Schemas ---
 class HealthRecordBase(BaseModel):
     animal_id: int
-    # ✅ FIX: Use default_factory to call date.today() dynamically
-    date: date = Field(default_factory=date.today)  
+    date: date = Field(default_factory=date.today)  # This is correct
     temperature: float
-    appetite: str  
+    appetite: str
     milk_yield: float
     notes: Optional[str] = None
 
@@ -39,8 +35,6 @@ class HealthRecordResponse(HealthRecordBase):
     class Config:
         from_attributes = True
 
-
-# --- Alert Schema ---
 class HealthAlertResponse(BaseModel):
     animal_id: int
     animal_name: str
