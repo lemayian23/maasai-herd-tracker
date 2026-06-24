@@ -1,30 +1,19 @@
-# Line 1
+# app/main.py (Full rewrite with Auth)
+
 from fastapi import FastAPI, Depends, HTTPException, status
-# Line 2
 from fastapi.middleware.cors import CORSMiddleware
-# Line 3
 from sqlalchemy.orm import Session
-# Line 4
 from typing import List
-# Line 5
-from datetime import date
+from datetime import date, timedelta
 
-# Line 7
 from app.database import engine, get_db
-# Line 8
-from app import models, schemas
+from app import models, schemas, auth
 
-# Line 10
+# Create tables (including the new User table)
 models.Base.metadata.create_all(bind=engine)
 
-# Line 12
-app = FastAPI(
-    title="Enkang Livestock Health Tracker API",
-    description="Backend API for Maasai herders to track cattle health offline.",
-    version="1.0.0"
-)
+app = FastAPI(title="Enkang Tracker with Auth", version="2.0.0")
 
-# Line 18
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,42 +22,102 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- ENDPOINTS ---
-
-# Line 27
+# --- ROOT ---
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Enkang Livestock Tracker API. Visit /docs for Swagger UI."}
+    return {"message": "Welcome to Enkang Tracker. Please login."}
 
-# Line 31
-@app.post("/api/animals", response_model=schemas.AnimalResponse, status_code=status.HTTP_201_CREATED)
-def create_animal(animal: schemas.AnimalCreate, db: Session = Depends(get_db)):
-    db_animal = models.Animal(**animal.dict())
+# --- AUTH ENDPOINTS ---
+
+@app.post("/api/register", response_model=schemas.UserResponse, status_code=201)
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Check if username exists
+    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # Hash the password and save
+    hashed_password = auth.get_password_hash(user.password)
+    new_user = models.User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+@app.post("/api/login", response_model=schemas.Token)
+def login(user_login: schemas.UserLogin, db: Session = Depends(get_db)):
+    user = auth.authenticate_user(db, user_login.username, user_login.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# --- PROTECTED ANIMAL ENDPOINTS ---
+# Notice the "current_user" dependency. If the token is invalid, it rejects the request.
+
+@app.post("/api/animals", response_model=schemas.AnimalResponse, status_code=201)
+def create_animal(
+    animal: schemas.AnimalCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)  # <-- PROTECTED
+):
+    # The animal is automatically owned by the logged-in user
+    db_animal = models.Animal(**animal.dict(), owner_id=current_user.id)
     db.add(db_animal)
     db.commit()
     db.refresh(db_animal)
     return db_animal
 
-# Line 40
 @app.get("/api/animals", response_model=List[schemas.AnimalResponse])
-def get_all_animals(db: Session = Depends(get_db)):
-    animals = db.query(models.Animal).all()
+def get_all_animals(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)  # <-- PROTECTED
+):
+    # Only fetch animals belonging to this specific user
+    animals = db.query(models.Animal).filter(models.Animal.owner_id == current_user.id).all()
     return animals
 
-# Line 46
 @app.get("/api/animals/{animal_id}", response_model=schemas.AnimalResponse)
-def get_animal(animal_id: int, db: Session = Depends(get_db)):
-    animal = db.query(models.Animal).filter(models.Animal.id == animal_id).first()
+def get_animal(
+    animal_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)  # <-- PROTECTED
+):
+    animal = db.query(models.Animal).filter(
+        models.Animal.id == animal_id,
+        models.Animal.owner_id == current_user.id  # Ensure they own it
+    ).first()
     if not animal:
         raise HTTPException(status_code=404, detail="Animal not found")
     return animal
 
-# Line 54
-@app.post("/api/records", response_model=schemas.HealthRecordResponse, status_code=status.HTTP_201_CREATED)
-def create_health_record(record: schemas.HealthRecordCreate, db: Session = Depends(get_db)):
-    animal = db.query(models.Animal).filter(models.Animal.id == record.animal_id).first()
+# YOU MUST UPDATE THE HEALTH RECORDS ENDPOINTS TOO!
+# I will include the updated version below.
+
+@app.post("/api/records", response_model=schemas.HealthRecordResponse, status_code=201)
+def create_health_record(
+    record: schemas.HealthRecordCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)  # <-- PROTECTED
+):
+    # Verify the animal belongs to this user before adding record
+    animal = db.query(models.Animal).filter(
+        models.Animal.id == record.animal_id,
+        models.Animal.owner_id == current_user.id
+    ).first()
     if not animal:
-        raise HTTPException(status_code=404, detail="Animal not found")
+        raise HTTPException(status_code=404, detail="Animal not found or not owned by you")
     
     db_record = models.HealthRecord(**record.dict())
     db.add(db_record)
@@ -76,23 +125,24 @@ def create_health_record(record: schemas.HealthRecordCreate, db: Session = Depen
     db.refresh(db_record)
     return db_record
 
-# Line 67  <-- THIS IS THE ERROR SECTION
 @app.get("/api/alerts", response_model=List[schemas.HealthAlertResponse])
-def get_health_alerts(db: Session = Depends(get_db)):
+def get_health_alerts(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)  # <-- PROTECTED
+):
     alerts = []
-    animals = db.query(models.Animal).all()
+    # Only fetch animals for this user
+    animals = db.query(models.Animal).filter(models.Animal.owner_id == current_user.id).all()
     
     for animal in animals:
         latest_record = db.query(models.HealthRecord).filter(
             models.HealthRecord.animal_id == animal.id
-        ).order_by(models.HealthRecord.record_date.desc()).first()  # ✅ FIXED: Changed 'date' to 'record_date'
+        ).order_by(models.HealthRecord.record_date.desc()).first()
         
         if latest_record:
             warning = None
-            # Line 78: ✅ FIXED: Changed 'date' to 'record_date'
             if latest_record.temperature > 39.5:
                 warning = "🔥 Fever detected! Temperature above 39.5°C"
-            # Line 80: ✅ FIXED: Changed 'date' to 'record_date'
             elif latest_record.milk_yield < 5 and latest_record.appetite == "Low":
                 warning = "⚠️ Low milk yield and poor appetite. Check for infection."
             
