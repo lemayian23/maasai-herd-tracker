@@ -1,11 +1,11 @@
 # Line 1
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
 # Line 2
 from sqlalchemy.orm import relationship
 # Line 3
 from app.database import Base
 # Line 4
-from datetime import date
+from datetime import datetime
 
 # Line 6
 class Animal(Base):
@@ -17,6 +17,7 @@ class Animal(Base):
     animal_type = Column(String)
     birth_year = Column(Integer)
     color = Column(String)
+    deleted_at = Column(DateTime, nullable=True)
 
     owner = relationship("User", back_populates="animals")
 

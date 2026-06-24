@@ -100,3 +100,13 @@ class PaginatedAnimalResponse(BaseModel):
     total: int
     skip: int
     limit: int
+
+# --- Soft Delete Schemas ---
+class AnimalDeleteResponse(BaseModel):
+    message: str
+    animal_id: int
+    deleted_at: datetime
+
+class AnimalRestoreResponse(BaseModel):
+    message: str
+    animal_id: int
