@@ -125,6 +125,59 @@ def create_health_record(
     db.refresh(db_record)
     return db_record
 
+# --- USER PROFILE ENDPOINTS ---
+
+@app.get("/api/users/me", response_model=schemas.UserResponse)
+def get_current_user_profile(current_user: models.User = Depends(auth.get_current_user)):
+    """
+    Returns the profile information of the currently logged-in user.
+    """
+    return current_user
+
+@app.patch("/api/users/me/email", response_model=schemas.UserResponse)
+def update_user_email(
+    email_update: schemas.UserUpdateEmail,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Updates the logged-in user's email address.
+    """
+    # Check if the new email is already taken by another user
+    existing_user = db.query(models.User).filter(
+        models.User.email == email_update.email,
+        models.User.id != current_user.id  # Exclude the current user
+    ).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already in use by another account.")
+    
+    current_user.email = email_update.email
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@app.post("/api/users/me/change-password")
+def change_password(
+    password_data: schemas.UserChangePassword,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Changes the user's password after verifying the current password.
+    """
+    # 1. Verify the current password
+    if not auth.verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+    
+    # 2. Hash the new password
+    new_hashed_password = auth.get_password_hash(password_data.new_password)
+    
+    # 3. Update the user
+    current_user.hashed_password = new_hashed_password
+    db.commit()
+    
+    return {"message": "Password updated successfully."}
+
 @app.get("/api/alerts", response_model=List[schemas.HealthAlertResponse])
 def get_health_alerts(
     db: Session = Depends(get_db),
