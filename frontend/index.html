@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enkang Livestock Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    /* --- CSS Remains 99% the same as before --- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --color-primary: #C25A3C; --color-primary-dark: #A3452A;
+      --color-bg: #F7F3EE; --color-card: #FFFFFF; --color-text: #2D2A24;
+      --color-text-light: #6B655A; --color-border: #E2DCD5;
+      --color-success: #4A7C59; --color-danger: #C25A3C;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.06); --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+      --radius: 16px; --radius-sm: 8px; --font-family: 'Inter', sans-serif;
+    }
+    body { font-family: var(--font-family); background: var(--color-bg); color: var(--color-text); padding: 1rem; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .app { max-width: 1200px; width: 100%; margin: 0 auto; }
+
+    /* Auth Container */
+    .auth-container { max-width: 420px; margin: 2rem auto; background: var(--color-card); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-md); }
+    .auth-container h2 { margin-bottom: 0.5rem; }
+    .auth-container .subtitle { color: var(--color-text-light); margin-bottom: 1.5rem; }
+    .auth-toggle { text-align: center; margin-top: 1rem; color: var(--color-text-light); }
+    .auth-toggle a { color: var(--color-primary); font-weight: 600; cursor: pointer; text-decoration: none; }
+
+    .hidden { display: none !important; }
+    
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0 2rem; flex-wrap: wrap; gap: 0.5rem 1rem; }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .header-brand i { font-size: 2rem; color: var(--color-primary); background: var(--color-card); padding: 0.5rem; border-radius: 50%; box-shadow: var(--shadow-sm); }
+    .header-brand h1 { font-weight: 700; font-size: 1.75rem; letter-spacing: -0.5px; }
+    .header-brand span { color: var(--color-primary); }
+    .logout-btn { background: none; border: 1px solid var(--color-border); padding: 0.5rem 1rem; border-radius: 50px; cursor: pointer; font-weight: 500; transition: 0.2s; }
+    .logout-btn:hover { background: var(--color-danger); color: white; border-color: var(--color-danger); }
+
+    /* Tabs, Cards, Forms, Alerts - SAME AS BEFORE */
+    .nav-tabs { display: flex; gap: 0.25rem; background: var(--color-card); border-radius: var(--radius); padding: 0.25rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem; flex-wrap: wrap; }
+    .nav-tab { flex: 1; min-width: 100px; padding: 0.75rem 1.25rem; text-align: center; font-weight: 600; font-size: 0.9rem; border: none; background: transparent; border-radius: var(--radius-sm); color: var(--color-text-light); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .nav-tab:hover { background: rgba(194, 90, 60, 0.08); color: var(--color-primary); }
+    .nav-tab.active { background: var(--color-primary); color: white; box-shadow: var(--shadow-sm); }
+    .panel { display: none; animation: fadeUp 0.3s ease; }
+    .panel.active { display: block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .card { background: var(--color-card); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem; }
+    .card-header h2 { font-size: 1.25rem; font-weight: 600; }
+    .card-header .badge { background: var(--color-primary); color: white; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 50px; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; color: var(--color-text); }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 1rem; font-family: inherit; background: white; transition: 0.2s; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(194, 90, 60, 0.15); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.5rem; font-weight: 600; font-size: 0.9rem; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: 0.2s; background: var(--color-border); color: var(--color-text); }
+    .btn-primary { background: var(--color-primary); color: white; }
+    .btn-primary:hover { background: var(--color-primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn-success { background: var(--color-success); color: white; }
+    .btn-success:hover { filter: brightness(0.9); transform: translateY(-1px); }
+    .btn-block { width: 100%; justify-content: center; }
+    .animal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .animal-card { background: var(--color-bg); border-radius: var(--radius-sm); padding: 1rem; border-left: 4px solid var(--color-secondary); }
+    .animal-card h3 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .animal-card .meta { font-size: 0.85rem; color: var(--color-text-light); }
+    .animal-card .meta i { margin-right: 0.25rem; width: 1.2rem; }
+    .alert-item { background: #fff5f0; border-left: 4px solid var(--color-danger); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    .alert-item .alert-message { font-weight: 500; }
+    .alert-item .alert-message i { color: var(--color-danger); margin-right: 0.5rem; }
+    .alert-item .alert-meta { font-size: 0.85rem; color: var(--color-text-light); }
+    .empty-state { text-align: center; padding: 2rem 0; color: var(--color-text-light); }
+    .empty-state i { font-size: 3rem; color: var(--color-border); margin-bottom: 0.5rem; }
+    .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 1000; max-width: 380px; width: 100%; }
+    .toast { background: var(--color-card); padding: 1rem 1.25rem; border-radius: var(--radius-sm); box-shadow: var(--shadow-md); border-left: 4px solid var(--color-success); animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 0.75rem; font-weight: 500; }
+    .toast.error { border-left-color: var(--color-danger); }
+    .toast.success { border-left-color: var(--color-success); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } .animal-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .animal-grid { grid-template-columns: 1fr; } .card { padding: 1rem; } }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ==================== AUTH SECTION ==================== -->
+  <div id="authSection">
+    <div class="auth-container">
+      <h2 id="authTitle">Welcome Back</h2>
+      <p class="subtitle" id="authSubtitle">Log in to manage your herd.</p>
+      
+      <form id="authForm">
+        <div class="form-group">
+          <label for="authUsername">Username</label>
+          <input type="text" id="authUsername" placeholder="Enter username" required />
+        </div>
+        <div class="form-group" id="emailGroup">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" placeholder="Enter email" />
+        </div>
+        <div class="form-group">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" placeholder="Enter password" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="authSubmitBtn">Login</button>
+      </form>
+      
+      <div class="auth-toggle">
+        <span id="authToggleText">Don't have an account?</span>
+        <a id="authToggleLink">Register</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== APP SECTION (Protected) ==================== -->
+  <div id="appSection" class="hidden">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-brand">
+        <i class="fas fa-hippo"></i>
+        <h1>Enkang<span>Tracker</span></h1>
+      </div>
+      <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-panel="panel-herd" role="tab"><i class="fas fa-paw"></i> Herd</button>
+      <button class="nav-tab" data-panel="panel-add" role="tab"><i class="fas fa-plus-circle"></i> Add Animal</button>
+      <button class="nav-tab" data-panel="panel-checkup" role="tab"><i class="fas fa-stethoscope"></i> Checkup</button>
+      <button class="nav-tab" data-panel="panel-alerts" role="tab"><i class="fas fa-exclamation-triangle"></i> Alerts</button>
+    </nav>
+
+    <!-- Panel: Herd -->
+    <section class="panel active" id="panel-herd" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-paw" style="color:var(--color-primary);"></i> Your Herd</h2><span class="badge" id="herdCount">0</span></div>
+        <div id="herdList"><div class="empty-state"><i class="fas fa-cow"></i><p>No animals yet. Add your first one!</p></div></div>
+      </div>
+    </section>
+
+    <!-- Panel: Add Animal -->
+    <section class="panel" id="panel-add" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-plus-circle" style="color:var(--color-primary);"></i> Register New Animal</h2></div>
+        <form id="addAnimalForm">
+          <div class="form-row">
+            <div class="form-group"><label for="animalName">Name <span style="color:var(--color-danger);">*</span></label><input type="text" id="animalName" placeholder="e.g., Ngeria" required /></div>
+            <div class="form-group"><label for="animalType">Type <span style="color:var(--color-danger);">*</span></label><select id="animalType" required><option value="Cow">Cow</option><option value="Goat">Goat</option><option value="Sheep">Sheep</option><option value="Camel">Camel</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label for="birthYear">Birth Year</label><input type="number" id="birthYear" placeholder="e.g., 2020" value="2022" /></div>
+            <div class="form-group"><label for="animalColor">Color</label><input type="text" id="animalColor" placeholder="e.g., Black/White" /></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Register Animal</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel: Checkup -->
+    <section class="panel" id="panel-checkup" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-stethoscope" style="color:var(--color-primary);"></i> Record Health Checkup</h2></div>
+        <form id="checkupForm">
+          <div class="form-group"><label for="checkupAnimal">Select Animal <span style="color:var(--color-danger);">*</span></label><select id="checkupAnimal" required><option value="">-- Choose an animal --</option></select></div>
+          <div class="form-row">
+            <div class="form-group"><label for="temp">Temperature (°C) <span style="color:var(--color-danger);">*</span></label><input type="number" step="0.1" id="temp" placeholder="e.g., 38.5" required /></div>
+            <div class="form-group"><label for="milkYield">Milk Yield (litres)</label><input type="number" step="0.1" id="milkYield" placeholder="e.g., 5.0" /></div>
+          </div>
+          <div class="form-group"><label for="appetite">Appetite <span style="color:var(--color-danger);">*</span></label><select id="appetite" required><option value="Good">Good</option><option value="Low">Low</option><option value="None">None</option></select></div>
+          <div class="form-group"><label for="checkupNotes">Notes</label><textarea id="checkupNotes" rows="2" placeholder="Any observations..."></textarea></div>
+          <button type="submit" class="btn btn-success btn-block"><i class="fas fa-check-circle"></i> Record Checkup</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Panel: Alerts -->
+    <section class="panel" id="panel-alerts" role="tabpanel">
+      <div class="card">
+        <div class="card-header"><h2><i class="fas fa-exclamation-triangle" style="color:var(--color-danger);"></i> Health Alerts</h2><span class="badge" id="alertCount" style="background:var(--color-danger);">0</span></div>
+        <div id="alertList"><div class="empty-state"><i class="fas fa-check-circle" style="color:var(--color-success);"></i><p>All animals are healthy! No alerts.</p></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+const API_BASE = 'http://127.0.0.1:8000';
+const TOKEN_KEY = 'enkang_token';
+
+// ============================================================
+// UTILITY: Toast
+// ============================================================
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+// ============================================================
+// API CLIENT (Automatically attaches JWT if logged in)
+// ============================================================
+async function apiFetch(endpoint, options = {}) {
+  const url = `${API_BASE}${endpoint}`;
+  const token = localStorage.getItem(TOKEN_KEY);
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetch(url, { headers, ...options });
+  if (!response.ok) {
+    const errorText = await response.text();
+    if (response.status === 401) {
+      // Token expired or invalid. Force logout.
+      localStorage.removeItem(TOKEN_KEY);
+      checkAuthState();
+      throw new Error('Session expired. Please login again.');
+    }
+    throw new Error(errorText || `HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+// ============================================================
+// AUTH STATE MANAGEMENT
+// ============================================================
+function checkAuthState() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) {
+    document.getElementById('authSection').classList.add('hidden');
+    document.getElementById('appSection').classList.remove('hidden');
+    loadAnimals(); // Load initial data
+    // Switch to Herd tab by default
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-herd').classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.nav-tab[data-panel="panel-herd"]').classList.add('active');
+  } else {
+    document.getElementById('authSection').classList.remove('hidden');
+    document.getElementById('appSection').classList.add('hidden');
+  }
+}
+
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  checkAuthState();
+  showToast('Logged out successfully.', 'success');
+}
+
+// ============================================================
+// AUTH FORM (Login / Register Toggle)
+// ============================================================
+let isLoginMode = true;
+
+document.getElementById('authToggleLink').addEventListener('click', function(e) {
+  e.preventDefault();
+  isLoginMode = !isLoginMode;
+  const title = document.getElementById('authTitle');
+  const subtitle = document.getElementById('authSubtitle');
+  const btn = document.getElementById('authSubmitBtn');
+  const toggleText = document.getElementById('authToggleText');
+  const emailGroup = document.getElementById('emailGroup');
+  
+  if (isLoginMode) {
+    title.textContent = 'Welcome Back';
+    subtitle.textContent = 'Log in to manage your herd.';
+    btn.textContent = 'Login';
+    toggleText.textContent = "Don't have an account?";
+    this.textContent = 'Register';
+    emailGroup.classList.add('hidden');
+  } else {
+    title.textContent = 'Create Account';
+    subtitle.textContent = 'Start tracking your livestock for free.';
+    btn.textContent = 'Register';
+    toggleText.textContent = 'Already have an account?';
+    this.textContent = 'Login';
+    emailGroup.classList.remove('hidden');
+  }
+});
+
+document.getElementById('authForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const username = document.getElementById('authUsername').value.trim();
+  const password = document.getElementById('authPassword').value.trim();
+  const email = document.getElementById('authEmail').value.trim();
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  try {
+    if (isLoginMode) {
+      // LOGIN
+      const data = await apiFetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      });
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+      showToast('Login successful!', 'success');
+      checkAuthState();
+    } else {
+      // REGISTER
+      await apiFetch('/api/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, email, password })
+      });
+      showToast('Registration successful! Please login.', 'success');
+      // Switch to login mode
+      isLoginMode = true;
+      document.getElementById('authToggleLink').click(); // Trigger toggle logic
+      document.getElementById('authPassword').value = '';
+    }
+  } catch (err) {
+    showToast(err.message || 'Authentication failed.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = isLoginMode ? 'Login' : 'Register';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+// ============================================================
+// APP LOGIC (Protected routes)
+// ============================================================
+let animals = [];
+const herdList = document.getElementById('herdList');
+const herdCount = document.getElementById('herdCount');
+const alertList = document.getElementById('alertList');
+const alertCount = document.getElementById('alertCount');
+const checkupSelect = document.getElementById('checkupAnimal');
+
+function renderHerd() {
+  if (animals.length === 0) {
+    herdList.innerHTML = `<div class="empty-state"><i class="fas fa-cow"></i><p>No animals yet. Add your first one!</p></div>`;
+    herdCount.textContent = '0';
+    return;
+  }
+  let html = '<div class="animal-grid">';
+  animals.forEach(animal => {
+    html += `<div class="animal-card"><h3>${animal.name}</h3><div class="meta"><i class="fas fa-tag"></i> ${animal.animal_type}</div><div class="meta"><i class="fas fa-calendar"></i> ${animal.birth_year}</div><div class="meta"><i class="fas fa-palette"></i> ${animal.color || 'N/A'}</div></div>`;
+  });
+  html += '</div>';
+  herdList.innerHTML = html;
+  herdCount.textContent = animals.length;
+}
+
+function renderAlerts(alerts) {
+  if (!alerts || alerts.length === 0) {
+    alertList.innerHTML = `<div class="empty-state"><i class="fas fa-check-circle" style="color:var(--color-success);"></i><p>All animals are healthy! No alerts.</p></div>`;
+    alertCount.textContent = '0';
+    return;
+  }
+  let html = '';
+  alerts.forEach(alert => {
+    html += `<div class="alert-item"><span class="alert-message"><i class="fas fa-exclamation-circle"></i> ${alert.warning}</span><span class="alert-meta"><i class="fas fa-paw"></i> ${alert.animal_name}</span></div>`;
+  });
+  alertList.innerHTML = html;
+  alertCount.textContent = alerts.length;
+}
+
+function populateCheckupSelect() {
+  checkupSelect.innerHTML = '<option value="">-- Choose an animal --</option>';
+  animals.forEach(animal => {
+    const option = document.createElement('option');
+    option.value = animal.id;
+    option.textContent = `${animal.name} (${animal.animal_type})`;
+    checkupSelect.appendChild(option);
+  });
+}
+
+async function loadAnimals() {
+  try {
+    animals = await apiFetch('/api/animals');
+    renderHerd();
+    populateCheckupSelect();
+    await loadAlerts();
+  } catch (err) {
+    if (!err.message.includes('Session expired')) {
+      showToast('Failed to load herd.', 'error');
+    }
+  }
+}
+
+async function loadAlerts() {
+  try {
+    const alerts = await apiFetch('/api/alerts');
+    renderAlerts(alerts);
+  } catch (err) {
+    // Silent fail for alerts if not critical
+  }
+}
+
+// Tab switching
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(this.dataset.panel).classList.add('active');
+    if (this.dataset.panel === 'panel-alerts') loadAlerts();
+    if (this.dataset.panel === 'panel-herd') loadAnimals();
+  });
+});
+
+// Add Animal Form
+document.getElementById('addAnimalForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const name = document.getElementById('animalName').value.trim();
+  const animal_type = document.getElementById('animalType').value;
+  const birth_year = parseInt(document.getElementById('birthYear').value) || 2022;
+  const color = document.getElementById('animalColor').value.trim();
+  if (!name) { showToast('Please enter a name.', 'error'); return; }
+  try {
+    await apiFetch('/api/animals', { method: 'POST', body: JSON.stringify({ name, animal_type, birth_year, color }) });
+    showToast(`✅ ${name} registered!`);
+    this.reset();
+    await loadAnimals();
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+});
+
+// Checkup Form
+document.getElementById('checkupForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const animal_id = parseInt(document.getElementById('checkupAnimal').value);
+  const temperature = parseFloat(document.getElementById('temp').value);
+  const milk_yield = parseFloat(document.getElementById('milkYield').value) || 0;
+  const appetite = document.getElementById('appetite').value;
+  const notes = document.getElementById('checkupNotes').value.trim();
+  if (!animal_id) { showToast('Select an animal.', 'error'); return; }
+  if (isNaN(temperature)) { showToast('Enter valid temperature.', 'error'); return; }
+  try {
+    await apiFetch('/api/records', { method: 'POST', body: JSON.stringify({ animal_id, temperature, appetite, milk_yield, notes }) });
+    showToast('✅ Checkup recorded!');
+    this.reset();
+    await loadAlerts();
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+checkAuthState();
+</script>
+</body>
+</html>
